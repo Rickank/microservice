@@ -6,14 +6,13 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
-import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -26,7 +25,7 @@ import java.util.UUID;
 public class AuthorizationServerConfig {
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository() {
+    public InMemoryRegisteredClientRepository registeredClientRepository() {
         RegisteredClient client = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("bff-client")
                 .clientSecret("{noop}secret")
@@ -40,7 +39,6 @@ public class AuthorizationServerConfig {
                         .accessTokenTimeToLive(Duration.ofHours(1))
                         .build())
                 .build();
-
         return new InMemoryRegisteredClientRepository(client);
     }
 
