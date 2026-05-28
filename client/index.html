@@ -58,7 +58,7 @@
                 method: "POST",
                 credentials: "include", // Skicka med session-cookie
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sender: "adam", content: content })
+                body: JSON.stringify({ sender: "admin", content: content })
             });
             input.value = "";
             loadMessages(); // Uppdatera listan efter skickat meddelande

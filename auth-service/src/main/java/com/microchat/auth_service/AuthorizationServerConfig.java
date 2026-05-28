@@ -66,7 +66,7 @@ public class AuthorizationServerConfig {
     @Bean
     public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
         var user = User.builder()
-                .username("adam")
+                .username("admin")
                 .password(passwordEncoder.encode("password"))
                 .roles("USER")
                 .build();
