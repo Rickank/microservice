@@ -6,9 +6,9 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.function.RouterFunction;
-import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
 
+import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.setPath;
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.uri;
 import static org.springframework.cloud.gateway.server.mvc.filter.TokenRelayFilterFunctions.tokenRelay;
 import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFunctions.http;
@@ -38,6 +38,7 @@ public class BffConfig {
                         .DELETE("/**", http())
                 )
                 .before(uri("http://localhost:8081/"))
+                .before(setPath("/users"))
                 .filter(tokenRelay())
                 .build();
     }
@@ -50,6 +51,7 @@ public class BffConfig {
                         .POST("/**", http())
                 )
                 .before(uri("http://localhost:8082/"))
+                .before(setPath("/messages"))
                 .filter(tokenRelay())
                 .build();
     }
