@@ -7,7 +7,9 @@ import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -18,13 +20,14 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.web.client.RestClient;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 
 @Configuration
@@ -64,13 +67,31 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
-        var user = User.builder()
-                .username("admin")
-                .password(passwordEncoder.encode("password"))
-                .roles("USER")
-                .build();
-        return new InMemoryUserDetailsManager(user);
+    public UserDetailsService userDetailsService() {
+        // RestClient för att anropa User Service
+        RestClient restClient = RestClient.create("http://localhost:8081");
+
+        return username -> {
+            try {
+                // Hämta användare från User Service via REST
+                Map user = restClient.get()
+                        .uri("/users/by-username/{username}", username)
+                        .retrieve()
+                        .body(Map.class);
+
+                if (user == null) {
+                    throw new UsernameNotFoundException("Användare hittades inte: " + username);
+                }
+
+                return User.builder()
+                        .username((String) user.get("username"))
+                        .password((String) user.get("password"))
+                        .roles("USER")
+                        .build();
+            } catch (Exception e) {
+                throw new UsernameNotFoundException("Användare hittades inte: " + username);
+            }
+        };
     }
 
     @Bean

@@ -16,6 +16,7 @@ public class DataInitializer {
                 User admin = new User();
                 admin.setUsername("admin");
                 admin.setPassword(new BCryptPasswordEncoder().encode("password"));
+                admin.setRole("ADMIN"); // Admin får fulla rättigheter
                 userRepository.save(admin);
                 System.out.println("Admin-användare skapad!");
             }
