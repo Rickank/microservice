@@ -1,6 +1,7 @@
 package com.microchat.message_service;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.resilience.annotation.Retryable;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -22,6 +23,8 @@ public class MessageController {
     }
 
     @PostMapping
+    // Försöker upp till 3 gånger med 2 sekunders väntetid om RabbitMQ är otillgänglig
+    @Retryable(maxRetries = 3, delay = 2000)
     public Message sendMessage(@RequestBody Message message) {
         Message saved = messageRepository.save(message);
         rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE_NAME, saved.getContent());
