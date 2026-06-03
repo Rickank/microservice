@@ -4,35 +4,81 @@
     <meta charset="UTF-8">
     <title>MicroChat</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-        #messages { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin-bottom: 10px; }
+        body { font-family: Arial, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
+        h1 { color: #1a237e; }
+        h2 { color: #283593; margin-top: 30px; }
+        #messages { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
         .message { margin: 5px 0; padding: 5px; background: #f0f0f0; border-radius: 4px; }
-        input, button { padding: 8px; margin: 5px 0; }
-        #messageInput { width: 70%; }
-        button { cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px; }
+        input, button, select { padding: 8px; margin: 5px 0; border-radius: 4px; border: 1px solid #ccc; }
+        button { cursor: pointer; background: #1a237e; color: white; border: none; }
+        button:hover { background: #283593; }
+        .danger { background: #c62828; }
+        .danger:hover { background: #b71c1c; }
+        #userList { margin-top: 10px; }
+        .user-item { display: flex; align-items: center; gap: 10px; padding: 5px; background: #f0f0f0; border-radius: 4px; margin: 5px 0; }
+        hr { margin: 20px 0; }
+        #adminSection { display: none; }
+        #welcomeMsg { color: #283593; font-weight: bold; }
     </style>
 </head>
 <body>
 <h1>MicroChat</h1>
+<p id="welcomeMsg"></p>
 
-<!-- Meddelandelista -->
+<!-- Chattsektionen – visas för alla -->
+<h2>Chatt</h2>
+<select id="senderSelect"></select>
 <div id="messages"></div>
-
-<!-- Formulär för att skicka meddelanden -->
-<input type="text" id="messageInput" placeholder="Skriv ett meddelande..." />
+<input type="text" id="messageInput" placeholder="Skriv ett meddelande..." style="width: 60%;" />
 <button onclick="sendMessage()">Skicka</button>
 <button onclick="loadMessages()">Uppdatera</button>
 
-<script>
-    // BFF-adressen som alla anrop går igenom
-    const BFF_URL = "http://localhost:8080";
+<hr>
 
-    // Hämta alla meddelanden från BFF -> message-service
+<!-- Adminsektion – visas bara för admin -->
+<div id="adminSection">
+    <h2>Användarhantering (Admin)</h2>
+    <input type="text" id="newUsername" placeholder="Användarnamn" />
+    <input type="password" id="newPassword" placeholder="Lösenord" />
+    <button onclick="createUser()">Skapa användare</button>
+    <div id="userList"></div>
+    <button onclick="loadUsers()">Ladda användare</button>
+</div>
+
+<script>
+    const BFF_URL = "";
+    let currentUser = null;
+
+    // Hämta inloggad användare och roll
+    async function loadCurrentUser() {
+        try {
+            const response = await fetch(`${BFF_URL}/me`, { credentials: "include" });
+            currentUser = await response.json();
+
+            document.getElementById("welcomeMsg").textContent =
+                `Inloggad som: ${currentUser.username} (${currentUser.role})`;
+
+            // Uppdatera dropdown med inloggad användare
+            const select = document.getElementById("senderSelect");
+            const option = document.createElement("option");
+            option.value = currentUser.username;
+            option.textContent = currentUser.username;
+            select.appendChild(option);
+
+            // Visa adminsektion bara för ADMIN
+            if (currentUser.role === "ADMIN") {
+                document.getElementById("adminSection").style.display = "block";
+                loadUsers();
+            }
+        } catch (err) {
+            console.error("Kunde inte hämta användarinfo:", err);
+        }
+    }
+
+    // Hämta alla meddelanden
     async function loadMessages() {
         try {
-            const response = await fetch(`${BFF_URL}/api/messages`, {
-                credentials: "include" // Skicka med session-cookie
-            });
+            const response = await fetch(`${BFF_URL}/api/messages`, { credentials: "include" });
             const messages = await response.json();
             const container = document.getElementById("messages");
             container.innerHTML = "";
@@ -47,27 +93,82 @@
         }
     }
 
-    // Skicka ett meddelande via BFF -> message-service
+    // Skicka ett meddelande
     async function sendMessage() {
         const input = document.getElementById("messageInput");
+        const sender = document.getElementById("senderSelect").value;
         const content = input.value.trim();
         if (!content) return;
 
         try {
             await fetch(`${BFF_URL}/api/messages`, {
                 method: "POST",
-                credentials: "include", // Skicka med session-cookie
+                credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sender: "admin", content: content })
+                body: JSON.stringify({ sender: sender, content: content })
             });
             input.value = "";
-            loadMessages(); // Uppdatera listan efter skickat meddelande
+            loadMessages();
         } catch (err) {
             console.error("Kunde inte skicka meddelande:", err);
         }
     }
 
-    // Ladda meddelanden när sidan öppnas
+    // Hämta alla användare (bara admin)
+    async function loadUsers() {
+        try {
+            const response = await fetch(`${BFF_URL}/api/users`, { credentials: "include" });
+            const users = await response.json();
+            const container = document.getElementById("userList");
+            container.innerHTML = "";
+            users.forEach(user => {
+                const div = document.createElement("div");
+                div.className = "user-item";
+                div.innerHTML = `<span>${user.username} (${user.role})</span>
+                    <button class="danger" onclick="deleteUser(${user.id})">Ta bort</button>`;
+                container.appendChild(div);
+            });
+        } catch (err) {
+            console.error("Kunde inte hämta användare:", err);
+        }
+    }
+
+    // Skapa en ny användare (bara admin)
+    async function createUser() {
+        const username = document.getElementById("newUsername").value.trim();
+        const password = document.getElementById("newPassword").value.trim();
+        if (!username || !password) return;
+
+        try {
+            await fetch(`${BFF_URL}/api/users`, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: username, password: password })
+            });
+            document.getElementById("newUsername").value = "";
+            document.getElementById("newPassword").value = "";
+            loadUsers();
+        } catch (err) {
+            console.error("Kunde inte skapa användare:", err);
+        }
+    }
+
+    // Ta bort en användare (bara admin)
+    async function deleteUser(id) {
+        try {
+            await fetch(`${BFF_URL}/api/users/${id}`, {
+                method: "DELETE",
+                credentials: "include"
+            });
+            loadUsers();
+        } catch (err) {
+            console.error("Kunde inte ta bort användare:", err);
+        }
+    }
+
+    // Starta sidan
+    loadCurrentUser();
     loadMessages();
 </script>
 </body>
